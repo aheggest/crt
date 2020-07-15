@@ -77,12 +77,12 @@ public :
    TrueHit();
    ~TrueHit() {};
    static TrueHit* giveThis();
-   static TrueHit* giveThis(TTree* aTree, const std::string& option);
+   static TrueHit* giveThis(TChain* aTree, const std::string& option);
    static void releaseThis();
    void setupRead(const std::string& option = "");
    bool SetBranchAddresses();
-   TrueHit(TTree* aTree, const std::string& option);
-   TTree* GetInputTree();
+   TrueHit(TChain* aTree, const std::string& option);
+   TChain* GetInputTree();
    void GetHit(Long64_t entry);
 
    int   Event()        { return m_eve;        };
@@ -110,7 +110,7 @@ public :
    int   NStrip()       { return m_stripid.size(); };
 
 private:
-   TTree*   m_treeIn;
+   TChain*   m_treeIn;
 
    int           m_eve;
    int           m_run;
@@ -153,7 +153,7 @@ inline TrueHit* TrueHit::giveThis()
 }
 
 // Open a TTree for reading
-inline TrueHit* TrueHit::giveThis(TTree* aTree, const std::string& option)
+inline TrueHit* TrueHit::giveThis(TChain* aTree, const std::string& option)
 {
      if(DEBUG_truehit) cout << "debug::m_instance TrueHit " << m_instance << endl;
      if (0 == m_instance){
@@ -174,7 +174,7 @@ inline void TrueHit::releaseThis() {
 }
 
 // constructor for one TTree with read/write option
-TrueHit::TrueHit(TTree* aTree, const std::string& option){
+TrueHit::TrueHit(TChain* aTree, const std::string& option){
      if(option=="read"){
         m_treeIn = aTree;
         if(DEBUG_truehit) cout << " ....before setupread.... " << endl;
@@ -234,7 +234,7 @@ bool TrueHit::SetBranchAddresses()
 }
 
 // accessors for the input TTree
-TTree* TrueHit::GetInputTree() {return m_treeIn;};
+TChain* TrueHit::GetInputTree() {return m_treeIn;};
 
 // get all branch contents of input TTree for entry i
 void TrueHit::GetHit(Long64_t entry)

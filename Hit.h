@@ -77,12 +77,12 @@ public :
    Hit();
    ~Hit() {};
    static Hit* giveThis();
-   static Hit* giveThis(TTree* aTree, const std::string& option);
+   static Hit* giveThis(TChain* aTree, const std::string& option);
    static void releaseThis();
    void setupRead(const std::string& option = "");
    bool SetBranchAddresses();
-   Hit(TTree* aTree, const std::string& option);
-   TTree* GetInputTree();
+   Hit(TChain* aTree, const std::string& option);
+   TChain* GetInputTree();
    void GetHit(Long64_t entry);
 
    int         Event()            { return m_eve;            };
@@ -112,7 +112,7 @@ public :
    int         NStrip()           { return m_stripid.size(); };
 
 private:
-   TTree*        m_treeIn;
+   TChain*        m_treeIn;
    int           m_eve;
    int           m_run;
    int           m_subrun;
@@ -154,7 +154,7 @@ inline Hit* Hit::giveThis()
 }
 
 // Open a TTree for reading
-inline Hit* Hit::giveThis(TTree* aTree, const std::string& option)
+inline Hit* Hit::giveThis(TChain* aTree, const std::string& option)
 {
      if(DEBUG_hit) cout << "debug::m_instance Hit " << m_instance << endl;
      if (0 == m_instance){
@@ -175,7 +175,7 @@ inline void Hit::releaseThis() {
 }
 
 // constructor for one TTree with read/write option
-Hit::Hit(TTree* aTree, const std::string& option){
+Hit::Hit(TChain* aTree, const std::string& option){
      if(option=="read"){
         m_treeIn = aTree;
         if(DEBUG_hit) cout << " ....before setupread.... " << endl;
@@ -252,7 +252,7 @@ bool Hit::SetBranchAddresses()
 }
 
 // accessors for the input TTree
-TTree* Hit::GetInputTree() {return m_treeIn;};
+TChain* Hit::GetInputTree() {return m_treeIn;};
 
 // get all branch contents of input TTree for entry i
 void Hit::GetHit(Long64_t entry)

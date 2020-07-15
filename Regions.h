@@ -83,12 +83,12 @@ public :
    Regions();
    ~Regions() {};
    static Regions* giveThis();
-   static Regions* giveThis(TTree* aTree, const std::string& option);
+   static Regions* giveThis(TChain* aTree, const std::string& option);
    static void releaseThis();
    void setupRead(const std::string& option = "");
    bool SetBranchAddresses();
-   Regions(TTree* aTree, const std::string& option);
-   TTree* GetInputTree();
+   Regions(TChain* aTree, const std::string& option);
+   TChain* GetInputTree();
    void GetRegion(Long64_t entry);
 
    //accessors
@@ -147,7 +147,7 @@ public :
    //Int_t    OpDetExitID(Int_t index)      { return m_opdetidexit[index];     };
 
 private:
-   TTree*   m_treeIn;
+   TChain*   m_treeIn;
    Int_t    m_eve;
    Int_t    m_run;
    Int_t    m_subrun;
@@ -214,7 +214,7 @@ inline Regions* Regions::giveThis()
 }
 
 // Open a TTree for reading
-inline Regions* Regions::giveThis(TTree* aTree, const std::string& option)
+inline Regions* Regions::giveThis(TChain* aTree, const std::string& option)
 {
      if(DEBUG_region) cout << "debug::m_instance Regions " << m_instance << endl;
      if (0 == m_instance){
@@ -235,7 +235,7 @@ inline void Regions::releaseThis() {
 }
 
 // constructor for one TTree with read/write option
-Regions::Regions(TTree* aTree, const std::string& option){
+Regions::Regions(TChain* aTree, const std::string& option){
      if(option=="read"){
         m_treeIn = aTree;
         if(DEBUG_region) cout << " ....before setupread.... " << endl;
@@ -310,7 +310,7 @@ bool Regions::SetBranchAddresses()
 }
 
 // accessors for the input TTree
-TTree* Regions::GetInputTree() {return m_treeIn;};
+TChain* Regions::GetInputTree() {return m_treeIn;};
 
 // get all branch contents of input TTree for entry i
 void Regions::GetRegion(Long64_t entry)
