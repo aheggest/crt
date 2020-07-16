@@ -4,6 +4,7 @@
 #define DEBUG_cd 0
 
 #include <TROOT.h>
+#include <TChain.h>
 #include <TTree.h>
 #include <TBranch.h>
 #include <TNamed.h>
