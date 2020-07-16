@@ -15,6 +15,8 @@
 
 //#include "cetlib/exception.h"
 #include <string>
+#include <iostream>
+#include <fstream>
 
 #ifdef __CINT__
 #pragma link C++ class vector<vector<double> >;
