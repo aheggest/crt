@@ -11,6 +11,7 @@
 #define DEBUG_sim 0
 
 #include <TROOT.h>
+#include <TChain.h>
 #include <TTree.h>
 #include <TBranch.h>
 #include <TNamed.h>
@@ -88,12 +89,12 @@ public :
    Simulation();
    ~Simulation() {};
    static Simulation* giveThis();
-   static Simulation* giveThis(TTree* aTree, const std::string& option);
+   static Simulation* giveThis(TChain* aTree, const std::string& option);
    static void releaseThis();
    void setupRead(const std::string& option = "");
    bool SetBranchAddresses();
-   Simulation(TTree* aTree, const std::string& option);
-   TTree* GetInputTree();
+   Simulation(TChain* aTree, const std::string& option);
+   TChain* GetInputTree();
    void GetSim(Long64_t entry);
 
    Int_t Event()                  { return m_eve;     };
@@ -144,7 +145,7 @@ public :
    Int_t   CRTType(Int_t index)   { return m_adtype[index]; };
 
 private:
-   TTree*                 m_treeIn;     //pointer to input tree
+   TChain*                 m_treeIn;     //pointer to input tree
    Int_t                  m_eve;        //event number
    Int_t                  m_subrun;     //subrun number
    Int_t                  m_run;        //run number
@@ -194,7 +195,7 @@ inline Simulation* Simulation::giveThis()
 }
 
 // Open a TTree for reading
-inline Simulation* Simulation::giveThis(TTree* aTree, const std::string& option)
+inline Simulation* Simulation::giveThis(TChain* aTree, const std::string& option)
 {
      if(DEBUG_sim) cout << "debug::m_instance Simulation " << m_instance << endl;
      if (0 == m_instance){
@@ -215,7 +216,7 @@ inline void Simulation::releaseThis() {
 }
 
 // constructor for one TTree with read/write option
-Simulation::Simulation(TTree* aTree, const std::string& option){
+Simulation::Simulation(TChain* aTree, const std::string& option){
      if(option=="read"){
         m_treeIn = aTree;
         if(DEBUG_sim) cout << " ....before setupread.... " << endl;
@@ -287,7 +288,7 @@ bool Simulation::SetBranchAddresses() {
 }
  
 // accessors for the input TTree
-TTree* Simulation::GetInputTree() {return m_treeIn;};
+TChain* Simulation::GetInputTree() {return m_treeIn;};
 
 // get all branch contents of input TTree for entry i
 void Simulation::GetSim(Long64_t entry)

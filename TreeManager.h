@@ -9,10 +9,14 @@
 #include "TrueHit.h"
 #include "Gen.h"
 
+#include "TChain.h"
 #include "TTree.h"
 #include "TFile.h"
 
+//#include "cetlib/exception.h"
 #include <string>
+#include <iostream>
+#include <fstream>
 
 #ifdef __CINT__
 #pragma link C++ class vector<vector<double> >;
@@ -39,7 +43,8 @@ class TreeManager {
                 Gen        *tmGen()     { cout << "..tmGen.." << endl; return m_tgen; };
 
         protected:
-                void          init();
+                void          init(const char type);
+                void          fillchain(const char type, const std::string tname);
                 void          nullify();
 
         private:
@@ -47,13 +52,13 @@ class TreeManager {
 
                 TFile         *m_inFile;
 
-                TTree         *m_treeDis;
-                TTree         *m_treeSim;
-                TTree         *m_treeReg;
-                TTree         *m_treeDet;
-                TTree         *m_treeHit;
-                TTree         *m_treeTrueHit;
-                TTree         *m_treeGen;
+                TChain         *m_treeDis;
+                TChain         *m_treeSim;
+                TChain         *m_treeReg;
+                TChain         *m_treeDet;
+                TChain         *m_treeHit;
+                TChain         *m_treeTrueHit;
+                TChain         *m_treeGen;
 
                 CosmicDisplay *m_tdis;
                 Simulation    *m_tsim;
@@ -63,6 +68,7 @@ class TreeManager {
                 TrueHit       *m_ttruehit;
                 Gen           *m_tgen;
 
+                std::map<std::string,TChain*> m_nameToPtr;
 };
 #endif //TreeManager_h
 

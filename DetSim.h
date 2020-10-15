@@ -63,12 +63,12 @@ public :
    DetSim();
    ~DetSim() {};
    static DetSim* giveThis();
-   static DetSim* giveThis(TTree* aTree, const std::string& option);
+   static DetSim* giveThis(TChain* aTree, const std::string& option);
    static void releaseThis();
    void setupRead(const std::string& option = "");
    bool SetBranchAddresses();
-   DetSim(TTree* aTree, const std::string& option);
-   TTree* GetInputTree();
+   DetSim(TChain* aTree, const std::string& option);
+   TChain* GetInputTree();
    void GetDet(Long64_t entry);
 
    Int_t Event()                { return m_eve;          };
@@ -89,7 +89,7 @@ public :
    Int_t SubSys()               { return m_subsys;       };
 
 private:
-   TTree* m_treeIn;
+   TChain* m_treeIn;
    Int_t  m_eve;
    Int_t  m_run;
    Int_t  m_subrun;
@@ -123,7 +123,7 @@ inline DetSim* DetSim::giveThis()
 }
 
 // Open a TTree for reading
-inline DetSim* DetSim::giveThis(TTree* aTree, const std::string& option)
+inline DetSim* DetSim::giveThis(TChain* aTree, const std::string& option)
 {
      if(DEBUG_det) cout << "debug::m_instance DetSim " << m_instance << endl;
      if (0 == m_instance){
@@ -144,7 +144,7 @@ inline void DetSim::releaseThis() {
 }
 
 // constructor for one TTree with read/write option
-DetSim::DetSim(TTree* aTree, const std::string& option){
+DetSim::DetSim(TChain* aTree, const std::string& option){
      if(option=="read"){
         m_treeIn = aTree;
         if(DEBUG_det) cout << " ....before setupread.... " << endl;
@@ -203,7 +203,7 @@ bool DetSim::SetBranchAddresses()
 }
 
 // accessors for the input TTree
-TTree* DetSim::GetInputTree() {return m_treeIn;};
+TChain* DetSim::GetInputTree() {return m_treeIn;};
 
 // get all branch contents of input TTree for entry i
 void DetSim::GetDet(Long64_t entry)

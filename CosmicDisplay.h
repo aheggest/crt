@@ -4,6 +4,7 @@
 #define DEBUG_cd 0
 
 #include <TROOT.h>
+#include <TChain.h>
 #include <TTree.h>
 #include <TBranch.h>
 #include <TNamed.h>
@@ -47,12 +48,12 @@
 		~CosmicDisplay(){};
 
 		static CosmicDisplay* giveThis();
-		static CosmicDisplay* giveThis(TTree* aTree, const std::string& option);
+		static CosmicDisplay* giveThis(TChain* aTree, const std::string& option);
 		static void releaseThis();
 		void setupRead(const std::string& option = "");
 		bool SetBranchAddresses();
-		CosmicDisplay(TTree* aTree, const std::string& option);
-		TTree* GetInputTree();// {return m_treeIn;};
+		CosmicDisplay(TChain* aTree, const std::string& option);
+		TChain* GetInputTree();// {return m_treeIn;};
 
 		void GetCosmic(Long64_t entry);
 
@@ -78,7 +79,7 @@
 
 	private:
 
-		TTree* m_treeIn;
+		TChain* m_treeIn;
 
 		Int_t    m_event;
                 Int_t    m_run;
@@ -120,7 +121,7 @@
 	}
 
 	// Open a TTree for reading (writing option not now)
-	inline CosmicDisplay* CosmicDisplay::giveThis(TTree* aTree, const std::string& option)
+	inline CosmicDisplay* CosmicDisplay::giveThis(TChain* aTree, const std::string& option)
 	{
 		if(DEBUG_cd) cout << "debug::m_instance cosmicDisplay " << m_instance << endl;
 		if (0 == m_instance){
@@ -141,7 +142,7 @@
 	}
 
 	// constructor for one TTree with read/write option
-	CosmicDisplay::CosmicDisplay(TTree* aTree, const std::string& option){
+	CosmicDisplay::CosmicDisplay(TChain* aTree, const std::string& option){
 		if(option=="read"){
 			m_treeIn = aTree;
 			if(DEBUG_cd) cout << " ....before setupread.... " << endl;
@@ -189,7 +190,7 @@
 	}
 
 	// accessors for the input TTree
-	TTree* CosmicDisplay::GetInputTree() {return m_treeIn;};
+	TChain* CosmicDisplay::GetInputTree() {return m_treeIn;};
 
 	// get all branch cpntents of input TTree for entry i
 	void CosmicDisplay::GetCosmic(Long64_t entry)

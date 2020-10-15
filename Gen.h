@@ -69,12 +69,12 @@ public :
    ~Gen() {};
 
    static Gen* giveThis();
-   static Gen* giveThis(TTree* aTree, const std::string& option);
+   static Gen* giveThis(TChain* aTree, const std::string& option);
    static void releaseThis();
    void setupRead(const std::string& option = "");
    bool SetBranchAddresses();
-   Gen(TTree* aTree, const std::string& option);
-   TTree* GetInputTree();
+   Gen(TChain* aTree, const std::string& option);
+   TChain* GetInputTree();
    void GetGen(Long64_t entry);
 
 
@@ -112,7 +112,7 @@ public :
    //Bool_t   NuFid()          { return m_nuFid;           }
 
 private:
-   TTree*   m_treeIn;
+   TChain*   m_treeIn;
 
    Int_t                   m_event;
    Int_t                   m_run;
@@ -154,7 +154,7 @@ inline Gen* Gen::giveThis()
 }
 
 // Open a TTree for reading
-inline Gen* Gen::giveThis(TTree* aTree, const std::string& option)
+inline Gen* Gen::giveThis(TChain* aTree, const std::string& option)
 {
      if(DEBUG_gen) cout << "debug::m_instance Gen " << m_instance << endl;
      if (0 == m_instance){
@@ -175,7 +175,7 @@ inline void Gen::releaseThis() {
 }
 
 // constructor for one TTree with read/write option
-Gen::Gen(TTree* aTree, const std::string& option){
+Gen::Gen(TChain* aTree, const std::string& option){
      if(option=="read"){
         m_treeIn = aTree;
         if(DEBUG_gen) cout << " ....before setupread.... " << endl;
@@ -236,7 +236,7 @@ bool Gen::SetBranchAddresses()
 }
 
 // accessors for the input TTree
-TTree* Gen::GetInputTree() {return m_treeIn;};
+TChain* Gen::GetInputTree() {return m_treeIn;};
 
 // get all branch contents of input TTree for entry i
 void Gen::GetGen(Long64_t entry)

@@ -38,7 +38,7 @@
 using namespace std;
 
 //file to be analyzed
-TreeManager filereader("~/Analysis/Simulation/CRTAnalysis/v08_54/simana.root");
+TreeManager filereader("./files.list");
 
 //////////////////////////////////////
 // Simulation Tree specific functions
@@ -380,133 +380,244 @@ void PlotSubSystemEDep() {
 //calculate the fraction of muons entering through a particular CRT region
 void RegRates() {
 
+    const bool printcounts = false;
+
+    struct eveid{
+        int eve, run, subrun;
+
+    };
+    auto cmp_eveid = [](const eveid& lhs, const eveid& rhs) {
+        if( lhs.run != rhs.run ) return lhs.run < rhs.run;
+        if( lhs.subrun != rhs.subrun ) return lhs.subrun < rhs.subrun;
+        return lhs.eve < rhs.eve;
+    };
+
     Regions* reg = filereader.tmReg();
-    Int_t nentries = reg->GetInputTree()->GetEntries();
+    const Int_t nentries = reg->GetInputTree()->GetEntries();
     cout << "reading from RegionsTree with " << nentries << " entries..." << endl;
 
-    Int_t nmu = 0, nmiss=0, ntag=0;
-    Int_t nmu_tmp = 0, ntag_tmp=0;
-    Int_t ntop=0, nslong=0, nslat=0, nlat=0, nlong=0, nbot=0;
-    Int_t ntop_tmp=0, nslong_tmp=0, nslat_tmp=0;
-    Int_t nlong_tmp=0, nlat_tmp=0, nbot_tmp=0;
-    Int_t nreg1=0, nreg2=0, nreg3=0;
-    set<int> events;
-    map<int,vector<int>> muHits;
+    Int_t n_crt_nolar=0, n_crt_noav=0, n_crt_iv=0, n_crt_av=0, n_crt_fv=0;
+    Int_t n = 0, n_crt=0, n_noav = 0, n_av = 0, n_fv = 0;
+    set<eveid,decltype(cmp_eveid)> events(cmp_eveid);
+    map<int,int> regcounts_all;
+    map<int,int> regcounts_nolar;
+    map<int,int> regcounts_noav;
+    map<int,int> regcounts_av;
+    map<int,int> regcounts_fv;
 
-    TH1F* hmu = new TH1F("hmu","#mu's per event",300,0,300);
-    TH1F* htag = new TH1F("htag","#mu tracks tagged per event",300,0,300);
-    TH1F* htop = new TH1F("htop","#mu's entering from top",300,0,300);
-    TH1F* hsides = new TH1F("hsides","#mu's entering from sides",300,0,300);
-    TH1F* hbot   = new TH1F("hbot","#mu's hiting only bottom",300,0,300);
+    map<int,double> regrates_all  , regfrac_all;
+    map<int,double> regrates_nolar, regfrac_nolar;
+    map<int,double> regrates_noav , regfrac_noav;
+    map<int,double> regrates_av   , regfrac_av;
+    map<int,double> regrates_fv   , regfrac_fv;
 
-    reg->GetRegion(0);
-    int currentEvent = reg->Event();
-    events.insert(currentEvent);
+    int regs[14] = {30,31,32,33,34,40,41,42,43,44,45,46,47,50};
+    for(int i=0; i<14; i++) {
+        regcounts_all[regs[i]] = 0;
+        regcounts_nolar[regs[i]] = 0;
+        regcounts_noav[regs[i]] = 0;
+        regcounts_av[regs[i]] = 0;
+        regcounts_fv[regs[i]] = 0;
+    }
 
+    // loop over tracks
     for ( Int_t ientry = 0; ientry < nentries; ientry++ ) {
 
+        struct eveid eve = {reg->Event(),reg->Run(),reg->SubRun()};
+        events.insert(eve);
+
         reg->GetRegion(ientry);
-        if (reg->Active()==0) continue;
+        // if muon doesn't hit CRT or LAr, then skip
+        if (reg->Active()==0&&reg->CRTs()==0&&reg->Inactive()==0) continue;
 
         // if not a muon, skip
         if ( abs(reg->PDG()) != 13 ) continue;
 
-        // if same event
-        if ( reg->Event()==currentEvent) {
-            nmu_tmp++;
-            if (reg->CRTs()==0) nmiss++;
-            else ntag_tmp++;
-            for ( Int_t hit=0; hit<reg->NReg(); hit++ ) {
-                int enterReg=0;
-                // skip non-CRT regions
-                if (reg->Region(hit) < 30) continue;
-                muHits[reg->TrackID()].push_back(reg->Region(hit));
-                if (muHits[reg->TrackID()].size()==1) {
-                    enterReg = muHits[reg->TrackID()][0];
-                    if (enterReg==30) ntop_tmp++;
-                    if (enterReg==31||enterReg==32) nslat_tmp++;
-                    if (enterReg==33||enterReg==34) nslong_tmp++;
-                    if (enterReg>=40&&enterReg<=45) nlat_tmp++;
-                    if (enterReg==46||enterReg==47) nlong_tmp++;
-                    if (enterReg==50) nbot_tmp++;
-                }
-            } //loop over regions
-        }// if same event
+        //loop over regions, get all CRT regions hit by track
+        vector<int> muregs;
+        for ( Int_t hit=0; hit<reg->NReg(); hit++ ) {
 
-        if ( reg->Event()!=currentEvent || ientry==nentries-1) {
-            hmu->Fill(nmu_tmp);
-            nmu+=nmu_tmp; nmu_tmp=0;
-            htag->Fill(ntag_tmp);
-            ntag+=ntag_tmp; ntag_tmp=0;
-            htop->Fill(ntop_tmp+nslong_tmp+nslat_tmp);
-            hsides->Fill(nlong_tmp+nlat_tmp);
-            hbot->Fill(nbot_tmp);
-            ntop+=ntop_tmp; ntop_tmp=0;
-            nslong+=nslong_tmp; nslong_tmp=0;
-            nslat+=nslat_tmp; nslat_tmp=0;
-            nlong+=nlong_tmp; nlong_tmp=0;
-            nlat+=nlat_tmp; nlat_tmp=0;
-            nbot+=nbot_tmp; nbot_tmp=0;
+            // skip non-CRT regions
+            if (reg->Region(hit) < 30) continue;
 
-            for ( auto const& hit : muHits ) {
-                switch (hit.second.size()) {
-                    case 1:
-                        nreg1++; break;
-                    case 2:
-                        nreg2++; break;
-                    case 3:
-                        nreg3++; break;
-                }//switch
-            }// for muHits
+            muregs.push_back(reg->Region(hit));
 
-            muHits.clear();
-            currentEvent=reg->Event();
-            events.insert(reg->Event());
-            cout << "new event: " << currentEvent << endl;
+        } // end loop over regions
 
+        n++;
+        if(reg->CRTs()>0){
+            n_crt++;
+            regcounts_all[muregs[0]]++;;
+            if(reg->Active()==0 && reg->Inactive()==0){
+                n_crt_nolar++;
+                regcounts_nolar[muregs[0]]++;
+            }
+            if(reg->Active()==0 && reg->Inactive()>0){
+                n_crt_noav++;
+                regcounts_noav[muregs[0]]++;
+            }
+            if(reg->Active()>0){ 
+                n_crt_av++;
+                regcounts_av[muregs[0]]++;
+            }
+            if(reg->Fiducial()>0){
+                n_crt_fv++;
+                regcounts_fv[muregs[0]]++;
+            }
+        }
+        if(reg->Active()==0 && reg->Inactive()>0) n_noav++;
+        if(reg->Active()>0)   n_av++;
+        if(reg->Fiducial()>0) n_fv++;
 
-        }//if new event or last entry
+        muregs.clear();
+
     }// loop over events/tracks
 
-    new TCanvas(); hmu->Draw();
-    new TCanvas(); htag->Draw();
-    new TCanvas(); htop->Draw();
-    new TCanvas(); hsides->Draw();
-    new TCanvas(); hbot->Draw();
-
     double sampleTime = events.size()*3.3e-3;
+    int ntop[5], nside[5];
+    double ntop_rate[5], ntop_frac[5];
+    double nside_rate[5], nside_frac[5];
+    for(int i=0; i<5; i++) {ntop[i]=0; nside[i]=0;}
+    for(int i=30; i<35; i++){
+        ntop[0]+=regcounts_all[i];
+        ntop[1]+=regcounts_nolar[i];
+        ntop[2]+=regcounts_noav[i];
+        ntop[3]+=regcounts_av[i];
+        ntop[4]+=regcounts_fv[i];
+    }
+    for(int i=40; i<48; i++){
+        nside[0]+=regcounts_all[i];
+        nside[1]+=regcounts_nolar[i];
+        nside[2]+=regcounts_noav[i];
+        nside[3]+=regcounts_av[i];
+        nside[4]+=regcounts_fv[i];
+    }
+    for(int i=0; i<5; i++){
+        ntop_rate[i] = 1.e-3*ntop[i]/sampleTime;
+        nside_rate[i] = 1.e-3*nside[i]/sampleTime;
+    }
+    ntop_frac[0]  = 1.*ntop[0]/n_crt;
+    ntop_frac[1]  = 1.*ntop[1]/n_crt_nolar;
+    ntop_frac[2]  = 1.*ntop[2]/n_crt_noav;
+    ntop_frac[3]  = 1.*ntop[3]/n_crt_av;
+    ntop_frac[4]  = 1.*ntop[4]/n_crt_fv;
+    nside_frac[0] = 1.*nside[0]/n_crt;
+    nside_frac[1] = 1.*nside[1]/n_crt_nolar;
+    nside_frac[2] = 1.*nside[2]/n_crt_noav;
+    nside_frac[3] = 1.*nside[3]/n_crt_av;
+    nside_frac[4] = 1.*nside[4]/n_crt_fv;
 
-    cout << " entry counts in " << events.size() << " events: " << '\n'
-         << "   ntag:  " << 1.0*ntag << '\n'
-         << "   miss:  " << 1.0*nmiss << "(" << 100.0*nmiss/(ntag+nmiss) << "%)" << '\n'
-         << "   top:   " << 1.0*ntop << '\n'
-         << "   SLat:  " << 1.0*nslat << '\n'
-         << "   SLong: " << 1.0*nslong << '\n'
-         << "   lat:   " << 1.0*nlat << '\n'
-         << "   long:  " << 1.0*nlong << '\n'
-         << "   bot:   " << 1.0*nbot << '\n'
+    for(int i=0; i<14; i++) {
+        regrates_all[regs[i]]   = 1.e-3*regcounts_all[regs[i]]  /sampleTime; 
+        regrates_nolar[regs[i]] = 1.e-3*regcounts_nolar[regs[i]]/sampleTime;
+        regrates_noav[regs[i]]  = 1.e-3*regcounts_noav[regs[i]] /sampleTime;  
+        regrates_av[regs[i]]    = 1.e-3*regcounts_av[regs[i]]   /sampleTime; 
+        regrates_fv[regs[i]]    = 1.e-3*regcounts_fv[regs[i]]   /sampleTime; 
+
+        regfrac_all[regs[i]]   = 1.*regcounts_all[regs[i]]  /n_crt;
+        regfrac_nolar[regs[i]] = 1.*regcounts_nolar[regs[i]]/n_crt_nolar;
+        regfrac_noav[regs[i]]  = 1.*regcounts_noav[regs[i]] /n_crt_noav;
+        regfrac_av[regs[i]]    = 1.*regcounts_av[regs[i]]   /n_crt_av;
+        regfrac_fv[regs[i]]    = 1.*regcounts_fv[regs[i]]   /n_crt_fv;
+    }
+
+
+    cout << '\n' << " found " << events.size() << " events amounting to " << sampleTime << " seconds" << '\n' 
      << endl;
 
-    cout << " entry rates in " << events.size() << " events: " << '\n'
-         << "   ntag:  " << 1.0*ntag/sampleTime << '\n'
-         << "   miss:  " << 1.0*nmiss/sampleTime << '\n'
-         << "   top:   " << 1.0*ntop/sampleTime << '\n'
-         << "   SLat:  " << 1.0*nslat/sampleTime << '\n'
-         << "   SLong: " << 1.0*nslong/sampleTime << '\n'
-         << "   lat:   " << 1.0*nlat/sampleTime << '\n'
-         << "   long:  " << 1.0*nlong/sampleTime << '\n'
-         << "   bot:   " << 1.0*nbot/sampleTime << '\n'
+    if(printcounts)
+    cout << "  ---   counts   --- " << '\n'
+         << "   muons hitting CRT and/or LAr:          " << n << '\n'
+         << "   muons hitting CRT:                     " << n_crt << '\n'
+         << "   muons hitting CRT but miss LAr:        " << n_crt_nolar << '\n'
+         << "   muons hitting CRT and IV but miss AV:  " << n_crt_noav << '\n'
+         << "   muons hitting IV but not AV:           " << n_noav << '\n'
+         << "   muons hitting AV:                      " << n_av << '\n'
+         << "   muons hitting FV:                      " << n_fv << '\n'
      << endl;
 
-    cout << " entry fractions in " << events.size() << " events:"<< '\n'
-         << "   tagged: " << ntag << '\n'
-         << "   top:   " << 1.0*ntop/ntag << '\n'
-         << "   slat:  " << 1.0*nslat/ntag << '\n'
-         << "   slong: " << 1.0*nslong/ntag << '\n'
-         << "   lat:   " << 1.0*nlat/ntag << '\n'
-         << "   long:  " << 1.0*nlong/ntag << '\n'
-         << "   bot:   " << 1.0*nbot/ntag << '\n'
+    cout << " --- tagging efficiencies ---" << '\n'
+         << "   muons hitting IV but not AV:    " << 1.*n_crt_noav/n_noav << '\n'
+         << "   muons hitting AV:               " << 1.*n_crt_av/n_av << '\n'
+         << "   muons hitting FV:               " << 1.*n_crt_fv/n_fv << '\n'
      << endl;
+
+    cout << " --- fraction of tracks hitting the CRT that... ---" << '\n'
+         << "   hit the CRT only:  " << 1.*n_crt_nolar/n_crt << '\n'
+         << "   hit IV but not AV: " << 1.*n_crt_noav/n_crt << '\n'
+         << "   hit AV:            " << 1.*n_crt_av/n_crt << '\n'
+         << "   hit FV:            " << 1.*n_crt_fv/n_crt << '\n'
+     << endl;
+
+    if(printcounts)
+    cout << "  --- first hit CRT region counts ---"  << '\n'
+         <<"            | all | CRT only | CRT+IV only | CRT+AV | CRT+FV " << '\n'
+         << "   top:    " << ntop[0] << " | " << ntop[1] << " | " << ntop[2] << " | " << ntop[3] << " | " << ntop[4]  << '\n'
+         << "      roof:   " << regcounts_all[30] << " | " << regcounts_nolar[30] << " | " << regcounts_noav[30] << " | " << regcounts_av[30] << " | " << regcounts_fv[30] << '\n'
+         << "      N rim:  " << regcounts_all[34] << " | " << regcounts_nolar[34] << " | " << regcounts_noav[34] << " | " << regcounts_av[34] << " | " << regcounts_fv[34] << '\n'
+         << "      S rim:  " << regcounts_all[33] << " | " << regcounts_nolar[33] << " | " << regcounts_noav[33] << " | " << regcounts_av[33] << " | " << regcounts_fv[33] << '\n'
+         << "      W rim:  " << regcounts_all[31] << " | " << regcounts_nolar[31] << " | " << regcounts_noav[31] << " | " << regcounts_av[31] << " | " << regcounts_fv[31] << '\n'
+         << "      E rim:  " << regcounts_all[32] << " | " << regcounts_nolar[32] << " | " << regcounts_noav[32] << " | " << regcounts_av[32] << " | " << regcounts_fv[32] << '\n'
+         << "   side:   " << nside[0] << " | " << nside[1] << " | " << nside[2] << " | " << nside[3] << " | " << nside[4] << '\n'
+         << "      S wall: " << regcounts_all[46] << " | " << regcounts_nolar[46] << " | " << regcounts_noav[46] << " | " << regcounts_av[46] << " | " << regcounts_fv[46] << '\n'
+         << "      N wall: " << regcounts_all[47] << " | " << regcounts_nolar[47] << " | " << regcounts_noav[47] << " | " << regcounts_av[47] << " | " << regcounts_fv[47] << '\n'
+         << "      W-N:    " << regcounts_all[42] << " | " << regcounts_nolar[42] << " | " << regcounts_noav[42] << " | " << regcounts_av[42] << " | " << regcounts_fv[42] << '\n'
+         << "      W-C:    " << regcounts_all[41] << " | " << regcounts_nolar[41] << " | " << regcounts_noav[41] << " | " << regcounts_av[41] << " | " << regcounts_fv[41] << '\n'
+         << "      W-S:    " << regcounts_all[40] << " | " << regcounts_nolar[40] << " | " << regcounts_noav[40] << " | " << regcounts_av[40] << " | " << regcounts_fv[40] << '\n'
+         << "      E-N:    " << regcounts_all[45] << " | " << regcounts_nolar[45] << " | " << regcounts_noav[45] << " | " << regcounts_av[45] << " | " << regcounts_fv[45] << '\n'
+         << "      E-C:    " << regcounts_all[44] << " | " << regcounts_nolar[44] << " | " << regcounts_noav[44] << " | " << regcounts_av[44] << " | " << regcounts_fv[44] << '\n'
+         << "      E-S:    " << regcounts_all[43] << " | " << regcounts_nolar[43] << " | " << regcounts_noav[43] << " | " << regcounts_av[43] << " | " << regcounts_fv[43] << '\n'
+         << "   bottom: "    << regcounts_all[50] << " | " << regcounts_nolar[50] << " | " << regcounts_noav[50] << " | " << regcounts_av[50] << " | " << regcounts_fv[50] << '\n'
+     << endl;
+
+    cout << " --- rates [kHz] --- " << '\n'
+         << "   muons hitting CRT and/or LAr:   " << 1.e-3*n          /sampleTime << '\n'
+         << "   muons hitting CRT:              " << 1.e-3*n_crt      /sampleTime << '\n'
+         << "   muons hitting CRT but miss LAr: " << 1.e-3*n_crt_nolar/sampleTime << '\n'
+         << "   muons hitting CRT but miss AV:  " << 1.e-3*n_crt_noav /sampleTime << '\n'
+         << "   muons hitting IV but not AV:    " << 1.e-3*n_noav     /sampleTime << '\n'
+         << "   muons hitting AV:               " << 1.e-3*n_av       /sampleTime << '\n'
+         << "   muons hitting FV:               " << 1.e-3*n_fv       /sampleTime << '\n'
+         <<"           | all | CRT only | CRT+IV only | CRT+AV | CRT+FV " << '\n'
+         << "   top:    " << ntop_rate[0] << " | " << ntop_rate[1] << " | " << ntop_rate[2] << " | " << ntop_rate[3] << " | " << ntop_rate[4]  << '\n'
+         << "      roof:   " << regrates_all[30] << " | " << regrates_nolar[30] << " | " << regrates_noav[30] << " | " << regrates_av[30] << " | " << regrates_fv[30] << '\n'
+         << "      N rim:  " << regrates_all[34] << " | " << regrates_nolar[34] << " | " << regrates_noav[34] << " | " << regrates_av[34] << " | " << regrates_fv[34] << '\n'
+         << "      S rim:  " << regrates_all[33] << " | " << regrates_nolar[33] << " | " << regrates_noav[33] << " | " << regrates_av[33] << " | " << regrates_fv[33] << '\n'
+         << "      W rim:  " << regrates_all[31] << " | " << regrates_nolar[31] << " | " << regrates_noav[31] << " | " << regrates_av[31] << " | " << regrates_fv[31] << '\n'
+         << "      E rim:  " << regrates_all[32] << " | " << regrates_nolar[32] << " | " << regrates_noav[32] << " | " << regrates_av[32] << " | " << regrates_fv[32] << '\n'
+         << "   side:   " << nside_rate[0] << " | " << nside_rate[1] << " | " << nside_rate[2] << " | " << nside_rate[3] << " | " << nside_rate[4] << '\n'
+         << "      S wall: " << regrates_all[46] << " | " << regrates_nolar[46] << " | " << regrates_noav[46] << " | " << regrates_av[46] << " | " << regrates_fv[46] << '\n'
+         << "      N wall: " << regrates_all[47] << " | " << regrates_nolar[47] << " | " << regrates_noav[47] << " | " << regrates_av[47] << " | " << regrates_fv[47] << '\n'
+         << "      W-N:    " << regrates_all[42] << " | " << regrates_nolar[42] << " | " << regrates_noav[42] << " | " << regrates_av[42] << " | " << regrates_fv[42] << '\n'
+         << "      W-C:    " << regrates_all[41] << " | " << regrates_nolar[41] << " | " << regrates_noav[41] << " | " << regrates_av[41] << " | " << regrates_fv[41] << '\n'
+         << "      W-S:    " << regrates_all[40] << " | " << regrates_nolar[40] << " | " << regrates_noav[40] << " | " << regrates_av[40] << " | " << regrates_fv[40] << '\n'
+         << "      E-N:    " << regrates_all[45] << " | " << regrates_nolar[45] << " | " << regrates_noav[45] << " | " << regrates_av[45] << " | " << regrates_fv[45] << '\n'
+         << "      E-C:    " << regrates_all[44] << " | " << regrates_nolar[44] << " | " << regrates_noav[44] << " | " << regrates_av[44] << " | " << regrates_fv[44] << '\n'
+         << "      E-S:    " << regrates_all[43] << " | " << regrates_nolar[43] << " | " << regrates_noav[43] << " | " << regrates_av[43] << " | " << regrates_fv[43] << '\n'
+         << "   bottom: "    << regrates_all[50] << " | " << regrates_nolar[50] << " | " << regrates_noav[50] << " | " << regrates_av[50] << " | " << regrates_fv[50] << '\n'
+     << endl;
+
+    cout << " --- entry fractions ---"<< '\n'
+         <<"          | all | CRT only | CRT+IV only | CRT+AV | CRT+FV " << '\n'
+         << "   top:    " << ntop_frac[0] << " | " << ntop_frac[1] << " | " << ntop_frac[2] << " | " << ntop_frac[3] << " | " << ntop_frac[4]  << '\n'
+         << "      roof:   " << regfrac_all[30] << " | " << regfrac_nolar[30] << " | " << regfrac_noav[30] << " | " << regfrac_av[30] << " | " << regfrac_fv[30] << '\n'
+         << "      N rim:  " << regfrac_all[34] << " | " << regfrac_nolar[34] << " | " << regfrac_noav[34] << " | " << regfrac_av[34] << " | " << regfrac_fv[34] << '\n'
+         << "      S rim:  " << regfrac_all[33] << " | " << regfrac_nolar[33] << " | " << regfrac_noav[33] << " | " << regfrac_av[33] << " | " << regfrac_fv[33] << '\n'
+         << "      W rim:  " << regfrac_all[31] << " | " << regfrac_nolar[31] << " | " << regfrac_noav[31] << " | " << regfrac_av[31] << " | " << regfrac_fv[31] << '\n'
+         << "      E rim:  " << regfrac_all[32] << " | " << regfrac_nolar[32] << " | " << regfrac_noav[32] << " | " << regfrac_av[32] << " | " << regfrac_fv[32] << '\n'
+         << "   side:   " << nside_frac[0] << " | " << nside_frac[1] << " | " << nside_frac[2] << " | " << nside_frac[3] << " | " << nside_frac[4] << '\n'
+         << "      S wall: " << regfrac_all[46] << " | " << regfrac_nolar[46] << " | " << regfrac_noav[46] << " | " << regfrac_av[46] << " | " << regfrac_fv[46] << '\n'
+         << "      N wall: " << regfrac_all[47] << " | " << regfrac_nolar[47] << " | " << regfrac_noav[47] << " | " << regfrac_av[47] << " | " << regfrac_fv[47] << '\n'
+         << "      W-N:    " << regfrac_all[42] << " | " << regfrac_nolar[42] << " | " << regfrac_noav[42] << " | " << regfrac_av[42] << " | " << regfrac_fv[42] << '\n'
+         << "      W-C:    " << regfrac_all[41] << " | " << regfrac_nolar[41] << " | " << regfrac_noav[41] << " | " << regfrac_av[41] << " | " << regfrac_fv[41] << '\n'
+         << "      W-S:    " << regfrac_all[40] << " | " << regfrac_nolar[40] << " | " << regfrac_noav[40] << " | " << regfrac_av[40] << " | " << regfrac_fv[40] << '\n'
+         << "      E-N:    " << regfrac_all[45] << " | " << regfrac_nolar[45] << " | " << regfrac_noav[45] << " | " << regfrac_av[45] << " | " << regfrac_fv[45] << '\n'
+         << "      E-C:    " << regfrac_all[44] << " | " << regfrac_nolar[44] << " | " << regfrac_noav[44] << " | " << regfrac_av[44] << " | " << regfrac_fv[44] << '\n'
+         << "      E-S:    " << regfrac_all[43] << " | " << regfrac_nolar[43] << " | " << regfrac_noav[43] << " | " << regfrac_av[43] << " | " << regfrac_fv[43] << '\n'
+         << "   bottom: "    << regfrac_all[50] << " | " << regfrac_nolar[50] << " | " << regfrac_noav[50] << " | " << regfrac_av[50] << " | " << regfrac_fv[50] << '\n'
+     << endl;
+
+
 }
 
 //Dump region info for a given event
